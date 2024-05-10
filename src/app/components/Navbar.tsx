@@ -1,24 +1,26 @@
 import React from 'react'
 import Link from 'next/link';
 
-const Navbar = () => {
+const Navbar: React.FC = () => {
   return (
-    <nav>
-      <ul>
-        <li>
-          <Link href="/">Home</Link>
-        </li>
-        <li>
-          <Link href="/pages/about">About</Link>
-        </li>
-        <li>
-          <Link href="/pages/projects">Projects</Link>
-        </li>
-        <li>
-          <Link href="/contact">Contact</Link>
-        </li>
-      </ul>
-    </nav>
+    <div className='py-4'>
+      <nav>
+        <ul className='flex justify-center space-x-6'>
+          <li>
+            <Link href="/">Home</Link>
+          </li>
+          <li>
+            <Link href="/pages/about">About</Link>
+          </li>
+          <li>
+            <Link href="/pages/projects">Projects</Link>
+          </li>
+          <li>
+            <Link href="/pages/contact">Contact</Link>
+          </li>
+        </ul>
+      </nav>
+    </div>
   );
 }
 

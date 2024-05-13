@@ -5,7 +5,7 @@ const Navbar: React.FC = () => {
   return (
     <div className='py-4'>
       <nav>
-        <ul className='flex justify-center space-x-6'>
+        <ul className='flex flex-wrap justify-center space-x-6'>
           <li>
             <Link href="/">Home</Link>
           </li>

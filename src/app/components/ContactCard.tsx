@@ -19,7 +19,7 @@ const ContactCard: React.FC<ContactCardProps> = ({
   return (
     <>
       <a href={href} target="_blank" rel="noopener noreferrer">
-        <Card className="p-6 rounded-lg shadow-lg border border-zinc-500 mx-4 my-2 sm:mx-8 w-48 sm:w-96 h-48 sm:h-96 hover:bg-zinc-900">
+        <Card className="p-6 rounded-lg shadow-lg border bg-black border-zinc-500 mx-4 my-2 sm:mx-8 w-48 sm:w-96 h-48 sm:h-96 hover:bg-zinc-900">
           <div className="flex flex-col items-center justify-center text-center">
             <div className="w-20 h-20 border rounded-full border-white p-2 flex items-center justify-center hover:bg-black">
               <svg

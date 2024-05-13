@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 const Navbar: React.FC = () => {
   return (
-    <div className='py-4'>
+    <div className='py-4 bg-black justify-center text-center flex'>
       <nav>
         <ul className='flex flex-wrap justify-center space-x-6'>
           <li>

@@ -47,7 +47,7 @@ const AboutCard = () => {
           <div className="flow-root flex-row ">
             <h4 className="text-xs md:text-lg lg:text-xl float-left">October 4 ,1999</h4>
             <Button className="float-right hover:bg-zinc-900">
-                Download Resume
+                Download CV
                 <MdDownloading className="ml-2 h-5 w-5"/>
             </Button>
           </div>

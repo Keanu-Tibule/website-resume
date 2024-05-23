@@ -38,12 +38,17 @@ const About = () => {
       <div>
         <Navbar />
       </div>
-      <AboutSidebar activeSection={activeSection} setActiveSection={setActiveSection}/>
-      <div>
-        {renderContent()}
+      <div className="md:flex min-h-screen">
+        <AboutSidebar
+          activeSection={activeSection}
+          setActiveSection={setActiveSection}
+        />
+        <div className="flex flex-1 justify-center items-center">
+          {renderContent()}
+        </div>
       </div>
       <Footer />
     </>
-  )
+  );
 }
 export default About;

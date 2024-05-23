@@ -46,7 +46,7 @@ const AboutCard = () => {
           </h4>
           <div className="flow-root flex-col md:flex-row ">
             <h4 className="text-xs md:text-lg lg:text-xl float-none md:float-left">October 4 ,1999</h4>
-            <Button className="float-none md:float-right hover:bg-zinc-900 mt-4 md:-mt-2">
+            <Button className="float-none md:float-right hover:bg-zinc-900 my-4 md:-mt-2">
                 Download CV
                 <MdDownloading className="ml-2 h-5 w-5"/>
             </Button>

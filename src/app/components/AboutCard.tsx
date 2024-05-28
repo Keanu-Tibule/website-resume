@@ -4,6 +4,7 @@ import { Button } from "flowbite-react";
 import { MdDownloading } from "react-icons/md";
 import testPic from "@/app/images/testpic.png";
 import profPic from "@/app/images/2x2.png"
+import profile from "@/app/images/profile.jpg"
 
 const AboutCard = () => {
     const imageStyle = {
@@ -14,7 +15,7 @@ const AboutCard = () => {
     <>
       <div className="flex flex-col md:flex-row items-center justify-center">
         <div>
-          <Image src={testPic} width={300} height={300} style={imageStyle} alt="Profile Picture" />
+          <Image src={profile} width={300} height={300} style={imageStyle} alt="Profile Picture" />
         </div>
         <div className="flex flex-col py-8 px-4 md:p-8 md:m-8">
           <h2 className="text-xl md:text-3xl lg:text-5xl font-bold">

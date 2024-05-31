@@ -45,7 +45,7 @@ const Projects = () => {
       <div>
         <ProjectSection
           title="Kulam: A 3D Filipino Horror Game"
-          desc="Made via Unreal Engine 5.2, this project has won me the Best Thesis Award."
+          desc="Solo developed via Unreal Engine 5.2, this project has won me the Best Thesis Award."
           images={images}
         />
       </div>

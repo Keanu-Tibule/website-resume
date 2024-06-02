@@ -18,7 +18,7 @@ const AboutSidebar: React.FC<AboutSidebarProps> = ({
 
   return (
     <>
-      <div className="p-4 flex flex-row md:flex-col md:fixed md:left-0">
+      <div className="p-4 flex flex-row md:flex-col md:fixed md:left-0 z-10">
         {/* About */}
         <button
           className={`${activeSection === "card" ? "w-11 md:w-28 rounded-lg ring-4 ring-zinc-500" : ""} m-2 group flex items-center justify-start w-11 h-11 bg-white rounded-full cursor-pointer 

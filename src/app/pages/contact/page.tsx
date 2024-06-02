@@ -15,7 +15,7 @@ const Contact = () => {
           <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold p-4 mt-16">
             Contact Me
           </h1>
-          <h3 className="mb-4">Got an idea? Lets hear it!</h3>
+          <h3 className="mb-4">Got an idea? Let&apos;s hear it!</h3>
         </div>
         <div className="container flex flex-col sm:flex-row items-center justify-center px-4 mx-auto mt-12 sm:mt-14">
           <ContactCard

@@ -23,7 +23,7 @@ const Projects = () => {
       </div>
       <div className="w-full h-54 items-center flex flex-col justify-center">
         <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold p-4 mt-16">Projects</h1>
-        <h3 className="mb-4">Check out my Github and maybe give me a follow!</h3>
+        <h3 className="mb-4 text-center">Check out my Github and maybe give me a follow!</h3>
         <a href="https://github.com/Keanu-Tibule" target="_blank" rel="noopener noreferrer">
               <svg
                 className="w-[48px] h-[48px] text-white"
@@ -50,10 +50,10 @@ const Projects = () => {
         />
       </div>
       <div className="w-full bg-zinc-300 text-black h-96 items-center flex flex-col justify-center">
-        <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold p-4">
+        <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold p-4 text-center">
           More Projects Coming Soon
         </h1>
-        <h3 className="p-4">
+        <h3 className="p-4 text-center">
           Got an idea in mind? Let&apos;s make it come true through code!
         </h3>
         <Link href="/pages/contact">

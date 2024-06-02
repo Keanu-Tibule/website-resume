@@ -2,7 +2,7 @@ import React from "react";
 
 const AboutExp = () => {
   return (
-    <div>
+    <div className="mb-6">
       <ol className="items-center sm:flex">
         <li className="relative mb-6 sm:mb-0">
           <div className="flex items-center">

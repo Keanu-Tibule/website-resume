@@ -60,7 +60,11 @@ export async function signIn(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    if (error.message.toLowerCase().includes("rate limit")) {
+      redirect("/admin?error=rate-limit");
+    }
+
+    redirect("/admin?error=magic-link");
   }
 
   redirect("/admin?sent=1");

@@ -60,6 +60,21 @@ export default async function AdminPage({
         {params.error === "not-allowed" && (
           <Notice tone="danger">That email is not in ADMIN_EMAILS.</Notice>
         )}
+        {params.error === "rate-limit" && (
+          <Notice tone="danger">
+            Too many magic links were requested. Wait a minute or two, then try again.
+          </Notice>
+        )}
+        {params.error === "magic-link" && (
+          <Notice tone="danger">
+            Supabase could not send the magic link. Check Auth settings and try again.
+          </Notice>
+        )}
+        {params.error === "auth-callback" && (
+          <Notice tone="danger">
+            The login link could not be verified. Request a fresh magic link.
+          </Notice>
+        )}
 
         {!supabase && (
           <Card className="mb-6 border-amber-300/70">

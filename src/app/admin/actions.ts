@@ -55,7 +55,7 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${getBaseUrl()}/admin`,
+      emailRedirectTo: `${getBaseUrl()}/auth/callback?next=/admin`,
     },
   });
 

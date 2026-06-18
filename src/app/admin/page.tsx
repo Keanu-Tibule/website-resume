@@ -1,4 +1,5 @@
-import { Lock, LogOut, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Lock, LogOut, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 import {
   createCertificate,
@@ -44,14 +45,22 @@ export default async function AdminPage({
               Portfolio Admin
             </h1>
           </div>
-          {user && (
-            <form action={signOut}>
-              <Button variant="secondary">
-                <LogOut className="h-4 w-4" />
-                Sign out
-              </Button>
-            </form>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4" />
+                View portfolio
+              </Link>
+            </Button>
+            {user && (
+              <form action={signOut}>
+                <Button variant="secondary">
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </form>
+            )}
+          </div>
         </div>
 
         {params.sent && <Notice>Magic link sent. Check your inbox.</Notice>}
@@ -244,7 +253,7 @@ export default async function AdminPage({
                   <div key={message.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
                     <p className="font-bold">{message.subject}</p>
                     <p className="mt-1 text-sm text-[rgb(var(--muted))]">
-                      {message.name} · {message.email}
+                      {message.name} - {message.email}
                     </p>
                     <p className="mt-3 text-sm">{message.message}</p>
                   </div>

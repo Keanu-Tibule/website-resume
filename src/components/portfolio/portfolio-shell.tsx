@@ -8,6 +8,7 @@ import {
   Github,
   Layers3,
   Linkedin,
+  Lock,
   Mail,
   Send,
   Sparkles,
@@ -144,6 +145,11 @@ function SiteNav({
           ))}
         </div>
         <div className="flex items-center gap-1">
+          <Button asChild size="icon" variant="secondary">
+            <Link href="/admin" aria-label="Open admin">
+              <Lock className="h-4 w-4" />
+            </Link>
+          </Button>
           {modes.map((item) => {
             const Icon = item.icon;
             return (

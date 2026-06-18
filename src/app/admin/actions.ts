@@ -1,11 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-function getBaseUrl() {
+async function getBaseUrl() {
+  const headerStore = await headers();
+  const origin = headerStore.get("origin");
+
+  if (origin) {
+    return origin;
+  }
+
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL;
   }
@@ -55,7 +63,7 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${getBaseUrl()}/auth/callback?next=/admin`,
+      emailRedirectTo: `${await getBaseUrl()}/auth/callback?next=/admin`,
     },
   });
 

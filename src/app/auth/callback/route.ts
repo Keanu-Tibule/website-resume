@@ -17,6 +17,8 @@ export async function GET(request: Request) {
     if (!error) {
       return NextResponse.redirect(redirectTo);
     }
+
+    console.error("Supabase auth callback failed:", error.message);
   }
 
   return NextResponse.redirect(new URL("/admin?error=auth-callback", requestUrl.origin));

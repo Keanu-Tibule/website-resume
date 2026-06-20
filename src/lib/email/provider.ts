@@ -9,13 +9,13 @@ type ContactEmailPayload = {
 
 export async function sendContactNotification(payload: ContactEmailPayload) {
   if (!process.env.RESEND_API_KEY || !process.env.CONTACT_TO_EMAIL) {
-    return { skipped: true };
+    return { status: "skipped" as const };
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
   const from = process.env.CONTACT_FROM_EMAIL ?? "Portfolio <onboarding@resend.dev>";
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from,
     to: process.env.CONTACT_TO_EMAIL,
     replyTo: payload.email,
@@ -29,5 +29,10 @@ export async function sendContactNotification(payload: ContactEmailPayload) {
     ].join("\n"),
   });
 
-  return { skipped: false };
+  if (error) {
+    console.error("Resend contact notification failed:", error.message);
+    return { status: "failed" as const };
+  }
+
+  return { status: "sent" as const };
 }

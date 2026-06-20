@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
   }
 
-  await sendContactNotification({ name, email, subject, message });
+  const emailResult = await sendContactNotification({ name, email, subject, message });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, email: emailResult.status });
 }

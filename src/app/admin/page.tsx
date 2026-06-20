@@ -9,6 +9,10 @@ import {
   deleteCmsRecord,
   signIn,
   signOut,
+  updateCertificate,
+  updateProjectMedia,
+  updateSkill,
+  updateTimelineItem,
   upsertProfile,
   upsertProject,
 } from "@/app/admin/actions";
@@ -184,6 +188,7 @@ export default async function AdminPage({
                 </PendingButton>
               </AdminActionForm>
               <AdminList items={cms?.projects} table="projects" labelKey="title" />
+              <ProjectEditors projects={cms?.projects ?? []} />
             </CmsSection>
 
             <CmsSection title="Project media">
@@ -196,6 +201,7 @@ export default async function AdminPage({
                 </PendingButton>
               </AdminActionForm>
               <AdminList items={cms?.projectMedia} table="project_media" labelKey="alt" />
+              <ProjectMediaEditors items={cms?.projectMedia ?? []} />
             </CmsSection>
 
             <CmsSection title="Timeline">
@@ -225,6 +231,7 @@ export default async function AdminPage({
                 </PendingButton>
               </AdminActionForm>
               <AdminList items={cms?.timeline} table="timeline_items" labelKey="title" />
+              <TimelineEditors items={cms?.timeline ?? []} />
             </CmsSection>
 
             <div className="grid gap-6 lg:grid-cols-2">
@@ -235,6 +242,7 @@ export default async function AdminPage({
                   <PendingButton pendingLabel="Adding skills...">Add skills</PendingButton>
                 </AdminActionForm>
                 <AdminList items={cms?.skills} table="skills" labelKey="label" />
+                <SkillEditors items={cms?.skills ?? []} />
               </CmsSection>
 
               <CmsSection title="Certificates">
@@ -250,6 +258,7 @@ export default async function AdminPage({
                   </PendingButton>
                 </AdminActionForm>
                 <AdminList items={cms?.certificates} table="certificates" labelKey="title" />
+                <CertificateEditors items={cms?.certificates ?? []} />
               </CmsSection>
             </div>
 
@@ -279,11 +288,26 @@ export default async function AdminPage({
 async function loadCmsData(supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>) {
   const [profile, projects, projectMedia, timeline, skills, certificates, messages] = await Promise.all([
     supabase.from("profile").select("*").maybeSingle(),
-    supabase.from("projects").select("id,title,slug,status").order("created_at", { ascending: false }),
-    supabase.from("project_media").select("id,alt,url").order("created_at", { ascending: false }),
-    supabase.from("timeline_items").select("id,title,kind").order("created_at", { ascending: false }),
-    supabase.from("skills").select("id,group_name,label").order("group_name", { ascending: true }),
-    supabase.from("certificates").select("id,title,issuer").order("created_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("id,title,slug,eyebrow,summary,description,role,stack,outcomes,status,featured,live_url,repo_url,confidentiality_note")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("project_media")
+      .select("id,project_id,alt,url,sort_order")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("timeline_items")
+      .select("id,kind,title,organization,date_label,location_label,description,href,published")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("skills")
+      .select("id,group_name,label,published")
+      .order("group_name", { ascending: true }),
+    supabase
+      .from("certificates")
+      .select("id,title,issuer,year_label,image_url,alt,published")
+      .order("created_at", { ascending: false }),
     supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(10),
   ]);
 
@@ -296,6 +320,172 @@ async function loadCmsData(supabase: NonNullable<Awaited<ReturnType<typeof getSu
     certificates: certificates.data ?? [],
     messages: messages.data ?? [],
   };
+}
+
+type AdminRow = Record<string, unknown> & { id: string };
+
+function asText(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function asTextList(value: unknown) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+}
+
+function ProjectEditors({ projects }: { projects: AdminRow[] }) {
+  if (projects.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3">
+      <h3 className="text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+        Edit existing projects
+      </h3>
+      {projects.map((project) => (
+        <details key={project.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
+          <summary className="cursor-pointer font-bold">{asText(project.title) || "Untitled project"}</summary>
+          <AdminActionForm action={upsertProject} className="mt-5 grid gap-4">
+            <input type="hidden" name="id" value={project.id} />
+            <input type="hidden" name="old_slug" value={asText(project.slug)} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <AdminField label="Title" name="title" defaultValue={asText(project.title)} required />
+              <AdminField label="Slug" name="slug" defaultValue={asText(project.slug)} required />
+            </div>
+            <AdminField label="Eyebrow" name="eyebrow" defaultValue={asText(project.eyebrow)} />
+            <AdminField label="Summary" name="summary" defaultValue={asText(project.summary)} required />
+            <div className="grid gap-4 md:grid-cols-2">
+              <AdminField label="Role" name="role" defaultValue={asText(project.role)} />
+              <AdminField label="Stack, comma-separated" name="stack" defaultValue={asTextList(project.stack).join(", ")} />
+              <AdminField label="Live URL" name="live_url" defaultValue={asText(project.live_url)} />
+              <AdminField label="Repo URL" name="repo_url" defaultValue={asText(project.repo_url)} />
+            </div>
+            <TextareaField label="Description" name="description" defaultValue={asText(project.description)} rows={5} />
+            <TextareaField label="Outcomes, one per line" name="outcomes" defaultValue={asTextList(project.outcomes).join("\n")} rows={4} />
+            <TextareaField label="Confidentiality note" name="confidentiality_note" defaultValue={asText(project.confidentiality_note)} rows={3} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <StatusSelect defaultValue={asText(project.status)} />
+              <Checkbox name="featured" label="Featured on homepage" defaultChecked={project.featured === true} />
+            </div>
+            <PendingButton pendingLabel="Saving project...">Save project edits</PendingButton>
+          </AdminActionForm>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+function ProjectMediaEditors({ items }: { items: AdminRow[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3">
+      <h3 className="text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+        Edit existing media
+      </h3>
+      {items.map((item) => (
+        <details key={item.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
+          <summary className="cursor-pointer font-bold">{asText(item.alt) || "Untitled media"}</summary>
+          <AdminActionForm action={updateProjectMedia} className="mt-5 grid gap-4">
+            <input type="hidden" name="id" value={item.id} />
+            <AdminField label="Image URL" name="url" defaultValue={asText(item.url)} required />
+            <AdminField label="Alt text" name="alt" defaultValue={asText(item.alt)} required />
+            <PendingButton pendingLabel="Saving media...">Save media edits</PendingButton>
+          </AdminActionForm>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+function TimelineEditors({ items }: { items: AdminRow[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3">
+      <h3 className="text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+        Edit existing timeline items
+      </h3>
+      {items.map((item) => (
+        <details key={item.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
+          <summary className="cursor-pointer font-bold">{asText(item.title) || "Untitled timeline item"}</summary>
+          <AdminActionForm action={updateTimelineItem} className="mt-5 grid gap-4">
+            <input type="hidden" name="id" value={item.id} />
+            <div className="grid gap-4 md:grid-cols-3">
+              <KindSelect defaultValue={asText(item.kind)} />
+              <AdminField label="Title" name="title" defaultValue={asText(item.title)} required />
+              <AdminField label="Organization" name="organization" defaultValue={asText(item.organization)} required />
+              <AdminField label="Date label" name="date_label" defaultValue={asText(item.date_label)} required />
+              <AdminField label="Location" name="location_label" defaultValue={asText(item.location_label)} />
+              <AdminField label="Link" name="href" defaultValue={asText(item.href)} />
+            </div>
+            <TextareaField label="Description" name="description" defaultValue={asText(item.description)} rows={4} required />
+            <Checkbox name="published" label="Published" defaultChecked={item.published === true} />
+            <PendingButton pendingLabel="Saving timeline item...">Save timeline edits</PendingButton>
+          </AdminActionForm>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+function SkillEditors({ items }: { items: AdminRow[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3">
+      <h3 className="text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+        Edit existing skills
+      </h3>
+      {items.map((item) => (
+        <details key={item.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
+          <summary className="cursor-pointer font-bold">{asText(item.label) || "Untitled skill"}</summary>
+          <AdminActionForm action={updateSkill} className="mt-5 grid gap-4">
+            <input type="hidden" name="id" value={item.id} />
+            <AdminField label="Group" name="group_name" defaultValue={asText(item.group_name)} required />
+            <AdminField label="Skill" name="label" defaultValue={asText(item.label)} required />
+            <Checkbox name="published" label="Published" defaultChecked={item.published === true} />
+            <PendingButton pendingLabel="Saving skill...">Save skill edits</PendingButton>
+          </AdminActionForm>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+function CertificateEditors({ items }: { items: AdminRow[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3">
+      <h3 className="text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+        Edit existing certificates
+      </h3>
+      {items.map((item) => (
+        <details key={item.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
+          <summary className="cursor-pointer font-bold">{asText(item.title) || "Untitled certificate"}</summary>
+          <AdminActionForm action={updateCertificate} className="mt-5 grid gap-4">
+            <input type="hidden" name="id" value={item.id} />
+            <AdminField label="Title" name="title" defaultValue={asText(item.title)} required />
+            <AdminField label="Issuer" name="issuer" defaultValue={asText(item.issuer)} />
+            <AdminField label="Year" name="year_label" defaultValue={asText(item.year_label)} />
+            <AdminField label="Image URL" name="image_url" defaultValue={asText(item.image_url)} />
+            <AdminField label="Alt text" name="alt" defaultValue={asText(item.alt)} />
+            <Checkbox name="published" label="Published" defaultChecked={item.published === true} />
+            <PendingButton pendingLabel="Saving certificate...">Save certificate edits</PendingButton>
+          </AdminActionForm>
+        </details>
+      ))}
+    </div>
+  );
 }
 
 function CmsSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -330,7 +520,7 @@ function AdminList({
   table,
   labelKey,
 }: {
-  items?: Record<string, string>[];
+  items?: AdminRow[];
   table: string;
   labelKey: string;
 }) {
@@ -346,9 +536,9 @@ function AdminList({
           className="flex flex-col justify-between gap-3 rounded-2xl border border-[rgb(var(--line))] p-3 sm:flex-row sm:items-center"
         >
           <div>
-            <p className="font-bold">{item[labelKey]}</p>
-            {item.slug && <p className="text-sm text-[rgb(var(--muted))]">/{item.slug}</p>}
-            {item.group_name && <p className="text-sm text-[rgb(var(--muted))]">{item.group_name}</p>}
+            <p className="font-bold">{String(item[labelKey] ?? "Untitled")}</p>
+            {Boolean(item.slug) && <p className="text-sm text-[rgb(var(--muted))]">/{String(item.slug)}</p>}
+            {Boolean(item.group_name) && <p className="text-sm text-[rgb(var(--muted))]">{String(item.group_name)}</p>}
           </div>
           <AdminActionForm action={deleteCmsRecord}>
             <input type="hidden" name="table" value={table} />
@@ -377,6 +567,59 @@ function Checkbox({
     <label className="flex min-h-12 items-center gap-3 rounded-full border border-[rgb(var(--line))] px-4 text-sm font-semibold">
       <input name={name} type="checkbox" defaultChecked={defaultChecked} />
       {label}
+    </label>
+  );
+}
+
+function KindSelect({ defaultValue = "experience" }: { defaultValue?: string }) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold">
+      Kind
+      <select name="kind" defaultValue={defaultValue} className="admin-input">
+        <option value="experience">Experience</option>
+        <option value="education">Education</option>
+        <option value="achievement">Achievement</option>
+      </select>
+    </label>
+  );
+}
+
+function StatusSelect({ defaultValue = "draft" }: { defaultValue?: string }) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold">
+      Status
+      <select name="status" defaultValue={defaultValue} className="admin-input">
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+        <option value="anonymized">Anonymized</option>
+      </select>
+    </label>
+  );
+}
+
+function TextareaField({
+  label,
+  name,
+  rows,
+  defaultValue,
+  required,
+}: {
+  label: string;
+  name: string;
+  rows: number;
+  defaultValue?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold">
+      {label}
+      <textarea
+        name={name}
+        rows={rows}
+        required={required}
+        defaultValue={defaultValue ?? ""}
+        className="admin-input rounded-[1.25rem] py-3"
+      />
     </label>
   );
 }

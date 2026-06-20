@@ -108,6 +108,8 @@ export async function upsertProject(
 ): Promise<AdminActionState> {
   try {
     const supabase = await requireSupabase();
+    const id = String(formData.get("id") ?? "").trim();
+    const oldSlug = String(formData.get("old_slug") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
     const slug = String(formData.get("slug") ?? "").trim();
     const summary = String(formData.get("summary") ?? "").trim();
@@ -117,10 +119,11 @@ export async function upsertProject(
       throw new Error("Title, slug, and summary are required.");
     }
 
-    const { error } = await supabase.from("projects").upsert({
+    const payload = {
       title,
       slug,
       summary,
+      eyebrow: String(formData.get("eyebrow") ?? "").trim() || null,
       description: String(formData.get("description") ?? summary),
       role: String(formData.get("role") ?? "Contributor"),
       status,
@@ -130,7 +133,11 @@ export async function upsertProject(
       live_url: String(formData.get("live_url") ?? "").trim() || null,
       repo_url: String(formData.get("repo_url") ?? "").trim() || null,
       confidentiality_note: String(formData.get("confidentiality_note") ?? "").trim() || null,
-    });
+    };
+
+    const { error } = id
+      ? await supabase.from("projects").update(payload).eq("id", id)
+      : await supabase.from("projects").upsert(payload);
 
     if (error) {
       throw new Error(error.message);
@@ -139,6 +146,9 @@ export async function upsertProject(
     revalidatePath("/");
     revalidatePath("/admin");
     revalidatePath(`/projects/${slug}`);
+    if (oldSlug && oldSlug !== slug) {
+      revalidatePath(`/projects/${oldSlug}`);
+    }
     return success("Project saved.");
   } catch (error) {
     return failure(error);
@@ -221,6 +231,48 @@ export async function createTimelineItem(
   }
 }
 
+export async function updateTimelineItem(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const id = String(formData.get("id") ?? "").trim();
+    const title = String(formData.get("title") ?? "").trim();
+    const organization = String(formData.get("organization") ?? "").trim();
+    const dateLabel = String(formData.get("date_label") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (!id || !title || !organization || !dateLabel || !description) {
+      throw new Error("Timeline id, title, organization, date, and description are required.");
+    }
+
+    const { error } = await supabase
+      .from("timeline_items")
+      .update({
+        kind: String(formData.get("kind") ?? "experience"),
+        title,
+        organization,
+        date_label: dateLabel,
+        location_label: String(formData.get("location_label") ?? "").trim() || null,
+        description,
+        href: String(formData.get("href") ?? "").trim() || null,
+        published: formData.get("published") === "on",
+      })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Timeline item saved.");
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 export async function createSkill(
   _prevState: AdminActionState,
   formData: FormData,
@@ -245,6 +297,41 @@ export async function createSkill(
     revalidatePath("/");
     revalidatePath("/admin");
     return success("Skills added.");
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function updateSkill(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const id = String(formData.get("id") ?? "").trim();
+    const groupName = String(formData.get("group_name") ?? "").trim();
+    const label = String(formData.get("label") ?? "").trim();
+
+    if (!id || !groupName || !label) {
+      throw new Error("Skill id, group, and label are required.");
+    }
+
+    const { error } = await supabase
+      .from("skills")
+      .update({
+        group_name: groupName,
+        label,
+        published: formData.get("published") === "on",
+      })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Skill saved.");
   } catch (error) {
     return failure(error);
   }
@@ -278,6 +365,43 @@ export async function createCertificate(
     revalidatePath("/");
     revalidatePath("/admin");
     return success("Certificate added.");
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function updateCertificate(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const id = String(formData.get("id") ?? "").trim();
+    const title = String(formData.get("title") ?? "").trim();
+
+    if (!id || !title) {
+      throw new Error("Certificate id and title are required.");
+    }
+
+    const { error } = await supabase
+      .from("certificates")
+      .update({
+        title,
+        issuer: String(formData.get("issuer") ?? "").trim() || null,
+        year_label: String(formData.get("year_label") ?? "").trim() || null,
+        image_url: String(formData.get("image_url") ?? "").trim() || null,
+        alt: String(formData.get("alt") ?? "").trim() || title,
+        published: formData.get("published") === "on",
+      })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Certificate saved.");
   } catch (error) {
     return failure(error);
   }
@@ -321,6 +445,37 @@ export async function createProjectMedia(
     revalidatePath("/admin");
     revalidatePath(`/projects/${slug}`);
     return success("Project media added.");
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function updateProjectMedia(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const id = String(formData.get("id") ?? "").trim();
+    const url = String(formData.get("url") ?? "").trim();
+    const alt = String(formData.get("alt") ?? "").trim();
+
+    if (!id || !url || !alt) {
+      throw new Error("Media id, URL, and alt text are required.");
+    }
+
+    const { error } = await supabase
+      .from("project_media")
+      .update({ url, alt })
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Project media saved.");
   } catch (error) {
     return failure(error);
   }

@@ -508,12 +508,23 @@ function ContactSection({ data }: { data: PortfolioData; mode: VisualMode }) {
         headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) {
+      const result = (await response.json()) as {
+        ok?: boolean;
+        email?: "sent" | "skipped" | "failed";
+      };
+
+      if (!response.ok || !result.ok) {
         throw new Error("Contact request failed.");
       }
 
       setState("sent");
-      setToast({ ok: true, message: "Message sent. I will see it in the CMS." });
+      setToast({
+        ok: true,
+        message:
+          result.email === "sent"
+            ? "Message sent and email notification delivered."
+            : "Message saved in the CMS. Email notifications are not configured yet.",
+      });
       currentTarget.reset();
     } catch {
       setState("error");

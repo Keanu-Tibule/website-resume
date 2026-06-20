@@ -6,6 +6,24 @@ import { redirect } from "next/navigation";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
+export type AdminActionState = {
+  ok: boolean;
+  message: string;
+  nonce: number;
+};
+
+function success(message: string): AdminActionState {
+  return { ok: true, message, nonce: Date.now() };
+}
+
+function failure(error: unknown): AdminActionState {
+  return {
+    ok: false,
+    message: error instanceof Error ? error.message : "Something went wrong.",
+    nonce: Date.now(),
+  };
+}
+
 async function getBaseUrl() {
   const headerStore = await headers();
   const origin = headerStore.get("origin");
@@ -84,199 +102,255 @@ export async function signOut() {
   redirect("/admin");
 }
 
-export async function upsertProject(formData: FormData) {
-  const supabase = await requireSupabase();
-  const title = String(formData.get("title") ?? "").trim();
-  const slug = String(formData.get("slug") ?? "").trim();
-  const summary = String(formData.get("summary") ?? "").trim();
-  const status = String(formData.get("status") ?? "draft");
+export async function upsertProject(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const title = String(formData.get("title") ?? "").trim();
+    const slug = String(formData.get("slug") ?? "").trim();
+    const summary = String(formData.get("summary") ?? "").trim();
+    const status = String(formData.get("status") ?? "draft");
 
-  if (!title || !slug || !summary) {
-    throw new Error("Title, slug, and summary are required.");
+    if (!title || !slug || !summary) {
+      throw new Error("Title, slug, and summary are required.");
+    }
+
+    const { error } = await supabase.from("projects").upsert({
+      title,
+      slug,
+      summary,
+      description: String(formData.get("description") ?? summary),
+      role: String(formData.get("role") ?? "Contributor"),
+      status,
+      featured: formData.get("featured") === "on",
+      stack: listFromText(formData.get("stack"), ","),
+      outcomes: listFromText(formData.get("outcomes"), "\n"),
+      live_url: String(formData.get("live_url") ?? "").trim() || null,
+      repo_url: String(formData.get("repo_url") ?? "").trim() || null,
+      confidentiality_note: String(formData.get("confidentiality_note") ?? "").trim() || null,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath(`/projects/${slug}`);
+    return success("Project saved.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { error } = await supabase.from("projects").upsert({
-    title,
-    slug,
-    summary,
-    description: String(formData.get("description") ?? summary),
-    role: String(formData.get("role") ?? "Contributor"),
-    status,
-    featured: formData.get("featured") === "on",
-    stack: listFromText(formData.get("stack"), ","),
-    outcomes: listFromText(formData.get("outcomes"), "\n"),
-    live_url: String(formData.get("live_url") ?? "").trim() || null,
-    repo_url: String(formData.get("repo_url") ?? "").trim() || null,
-    confidentiality_note: String(formData.get("confidentiality_note") ?? "").trim() || null,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  revalidatePath(`/projects/${slug}`);
-  redirect("/admin?updated=project");
 }
 
-export async function upsertProfile(formData: FormData) {
-  const supabase = await requireSupabase();
-  const fullName = String(formData.get("full_name") ?? "").trim();
-  const role = String(formData.get("role") ?? "").trim();
+export async function upsertProfile(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const fullName = String(formData.get("full_name") ?? "").trim();
+    const role = String(formData.get("role") ?? "").trim();
 
-  if (!fullName || !role) {
-    throw new Error("Name and role are required.");
+    if (!fullName || !role) {
+      throw new Error("Name and role are required.");
+    }
+
+    const { error } = await supabase.from("profile").upsert({
+      id: true,
+      full_name: fullName,
+      role,
+      headline: String(formData.get("headline") ?? "").trim() || null,
+      bio: String(formData.get("bio") ?? "").trim() || null,
+      location_label: String(formData.get("location_label") ?? "").trim() || null,
+      email: String(formData.get("email") ?? "").trim() || null,
+      phone: String(formData.get("phone") ?? "").trim() || null,
+      resume_url: String(formData.get("resume_url") ?? "").trim() || null,
+      avatar_url: String(formData.get("avatar_url") ?? "").trim() || null,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Profile saved.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { error } = await supabase.from("profile").upsert({
-    id: true,
-    full_name: fullName,
-    role,
-    headline: String(formData.get("headline") ?? "").trim() || null,
-    bio: String(formData.get("bio") ?? "").trim() || null,
-    location_label: String(formData.get("location_label") ?? "").trim() || null,
-    email: String(formData.get("email") ?? "").trim() || null,
-    phone: String(formData.get("phone") ?? "").trim() || null,
-    resume_url: String(formData.get("resume_url") ?? "").trim() || null,
-    avatar_url: String(formData.get("avatar_url") ?? "").trim() || null,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  redirect("/admin?updated=profile");
 }
 
-export async function createTimelineItem(formData: FormData) {
-  const supabase = await requireSupabase();
-  const title = String(formData.get("title") ?? "").trim();
-  const organization = String(formData.get("organization") ?? "").trim();
-  const dateLabel = String(formData.get("date_label") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
+export async function createTimelineItem(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const title = String(formData.get("title") ?? "").trim();
+    const organization = String(formData.get("organization") ?? "").trim();
+    const dateLabel = String(formData.get("date_label") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
 
-  if (!title || !organization || !dateLabel || !description) {
-    throw new Error("Timeline title, organization, date, and description are required.");
+    if (!title || !organization || !dateLabel || !description) {
+      throw new Error("Timeline title, organization, date, and description are required.");
+    }
+
+    const { error } = await supabase.from("timeline_items").insert({
+      kind: String(formData.get("kind") ?? "experience"),
+      title,
+      organization,
+      date_label: dateLabel,
+      location_label: String(formData.get("location_label") ?? "").trim() || null,
+      description,
+      href: String(formData.get("href") ?? "").trim() || null,
+      published: formData.get("published") === "on",
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Timeline item added.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { error } = await supabase.from("timeline_items").insert({
-    kind: String(formData.get("kind") ?? "experience"),
-    title,
-    organization,
-    date_label: dateLabel,
-    location_label: String(formData.get("location_label") ?? "").trim() || null,
-    description,
-    href: String(formData.get("href") ?? "").trim() || null,
-    published: formData.get("published") === "on",
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  redirect("/admin?updated=timeline");
 }
 
-export async function createSkill(formData: FormData) {
-  const supabase = await requireSupabase();
-  const groupName = String(formData.get("group_name") ?? "").trim();
-  const labels = listFromText(formData.get("labels"), ",");
+export async function createSkill(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const groupName = String(formData.get("group_name") ?? "").trim();
+    const labels = listFromText(formData.get("labels"), ",");
 
-  if (!groupName || labels.length === 0) {
-    throw new Error("Skill group and at least one skill are required.");
+    if (!groupName || labels.length === 0) {
+      throw new Error("Skill group and at least one skill are required.");
+    }
+
+    const { error } = await supabase
+      .from("skills")
+      .insert(labels.map((label) => ({ group_name: groupName, label })));
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Skills added.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { error } = await supabase
-    .from("skills")
-    .insert(labels.map((label) => ({ group_name: groupName, label })));
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  redirect("/admin?updated=skills");
 }
 
-export async function createCertificate(formData: FormData) {
-  const supabase = await requireSupabase();
-  const title = String(formData.get("title") ?? "").trim();
+export async function createCertificate(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const title = String(formData.get("title") ?? "").trim();
 
-  if (!title) {
-    throw new Error("Certificate title is required.");
+    if (!title) {
+      throw new Error("Certificate title is required.");
+    }
+
+    const { error } = await supabase.from("certificates").insert({
+      title,
+      issuer: String(formData.get("issuer") ?? "").trim() || null,
+      year_label: String(formData.get("year_label") ?? "").trim() || null,
+      image_url: String(formData.get("image_url") ?? "").trim() || null,
+      alt: String(formData.get("alt") ?? "").trim() || title,
+      published: formData.get("published") === "on",
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Certificate added.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { error } = await supabase.from("certificates").insert({
-    title,
-    issuer: String(formData.get("issuer") ?? "").trim() || null,
-    year_label: String(formData.get("year_label") ?? "").trim() || null,
-    image_url: String(formData.get("image_url") ?? "").trim() || null,
-    alt: String(formData.get("alt") ?? "").trim() || title,
-    published: formData.get("published") === "on",
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  redirect("/admin?updated=certificates");
 }
 
-export async function createProjectMedia(formData: FormData) {
-  const supabase = await requireSupabase();
-  const slug = cleanSlug(formData.get("project_slug"));
-  const url = String(formData.get("url") ?? "").trim();
-  const alt = String(formData.get("alt") ?? "").trim();
+export async function createProjectMedia(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const slug = cleanSlug(formData.get("project_slug"));
+    const url = String(formData.get("url") ?? "").trim();
+    const alt = String(formData.get("alt") ?? "").trim();
 
-  if (!slug || !url || !alt) {
-    throw new Error("Project slug, media URL, and alt text are required.");
+    if (!slug || !url || !alt) {
+      throw new Error("Project slug, media URL, and alt text are required.");
+    }
+
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("slug", slug)
+      .single();
+
+    if (projectError) {
+      throw new Error(projectError.message);
+    }
+
+    const { error } = await supabase.from("project_media").insert({
+      project_id: project.id,
+      url,
+      alt,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath(`/projects/${slug}`);
+    return success("Project media added.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("slug", slug)
-    .single();
-
-  if (projectError) {
-    throw new Error(projectError.message);
-  }
-
-  const { error } = await supabase.from("project_media").insert({
-    project_id: project.id,
-    url,
-    alt,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  revalidatePath(`/projects/${slug}`);
-  redirect("/admin?updated=media");
 }
 
-export async function deleteCmsRecord(formData: FormData) {
-  const supabase = await requireSupabase();
-  const table = String(formData.get("table") ?? "");
-  const id = String(formData.get("id") ?? "");
+export async function deleteCmsRecord(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const supabase = await requireSupabase();
+    const table = String(formData.get("table") ?? "");
+    const id = String(formData.get("id") ?? "");
 
-  const allowedTables = ["projects", "timeline_items", "skills", "certificates", "project_media"] as const;
+    const allowedTables = ["projects", "timeline_items", "skills", "certificates", "project_media"] as const;
 
-  if (!allowedTables.includes(table as (typeof allowedTables)[number]) || !id) {
-    throw new Error("Invalid delete request.");
+    if (!allowedTables.includes(table as (typeof allowedTables)[number]) || !id) {
+      throw new Error("Invalid delete request.");
+    }
+
+    const { error } = await supabase.from(table).delete().eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return success("Record deleted.");
+  } catch (error) {
+    return failure(error);
   }
-
-  const { error } = await supabase.from(table).delete().eq("id", id);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/");
-  redirect("/admin?deleted=1");
 }

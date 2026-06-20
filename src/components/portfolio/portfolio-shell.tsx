@@ -9,6 +9,7 @@ import {
   Layers3,
   Linkedin,
   Lock,
+  Loader2,
   Mail,
   Send,
   Sparkles,
@@ -483,20 +484,40 @@ function ProofSection({ data }: { data: PortfolioData; mode: VisualMode }) {
 
 function ContactSection({ data }: { data: PortfolioData; mode: VisualMode }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [toast, setToast] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setToast(null), 3600);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("sending");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/contact", {
-      method: "POST",
-      body: JSON.stringify(Object.fromEntries(form)),
-      headers: { "Content-Type": "application/json" },
-    });
+    const currentTarget = event.currentTarget;
 
-    setState(response.ok ? "sent" : "error");
-    if (response.ok) {
-      event.currentTarget.reset();
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(form)),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error("Contact request failed.");
+      }
+
+      setState("sent");
+      setToast({ ok: true, message: "Message sent. I will see it in the CMS." });
+      currentTarget.reset();
+    } catch {
+      setState("error");
+      setToast({ ok: false, message: "Could not send. Please email me directly." });
     }
   }
 
@@ -538,14 +559,25 @@ function ContactSection({ data }: { data: PortfolioData; mode: VisualMode }) {
               <textarea name="message" required rows={6} className="rounded-[1.25rem] border border-[rgb(var(--line))] bg-[rgb(var(--surface-strong)/0.82)] px-4 py-3 font-normal outline-none transition focus:border-[rgb(var(--accent))]" />
             </label>
             <Button type="submit" disabled={state === "sending"}>
+              {state === "sending" && <Loader2 className="h-4 w-4 animate-spin" />}
               {state === "sending" ? "Sending..." : "Send message"}
-              <Send className="h-4 w-4" />
+              {state !== "sending" && <Send className="h-4 w-4" />}
             </Button>
-            {state === "sent" && <p className="text-sm font-semibold text-emerald-500">Message sent. Thank you.</p>}
-            {state === "error" && <p className="text-sm font-semibold text-red-500">Something went wrong. Please email me directly.</p>}
           </form>
         </Card>
       </div>
+      {toast && (
+        <div
+          className={`fixed bottom-5 right-5 z-50 max-w-sm rounded-2xl border px-4 py-3 text-sm font-semibold shadow-soft backdrop-blur-xl ${
+            toast.ok
+              ? "border-emerald-300 bg-emerald-50/95 text-emerald-800"
+              : "border-red-300 bg-red-50/95 text-red-800"
+          }`}
+          role="status"
+        >
+          {toast.message}
+        </div>
+      )}
       <footer className="mx-auto mt-16 max-w-6xl border-t border-[rgb(var(--line))] pt-6 text-sm text-[rgb(var(--muted))]">
         Built as a living resume system. Free-tier friendly by design.
       </footer>

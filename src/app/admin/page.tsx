@@ -12,6 +12,7 @@ import {
   upsertProfile,
   upsertProject,
 } from "@/app/admin/actions";
+import { AdminActionForm, PendingButton } from "@/app/admin/form-controls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -54,10 +55,10 @@ export default async function AdminPage({
             </Button>
             {user && (
               <form action={signOut}>
-                <Button variant="secondary">
+                <PendingButton pendingLabel="Signing out..." variant="secondary">
                   <LogOut className="h-4 w-4" />
                   Sign out
-                </Button>
+                </PendingButton>
               </form>
             )}
           </div>
@@ -106,7 +107,9 @@ export default async function AdminPage({
             </p>
             <form action={signIn} className="mt-8 grid gap-4">
               <AdminField label="Email" name="email" type="email" required />
-              <Button disabled={!supabase}>Send magic link</Button>
+              <PendingButton disabled={!supabase} pendingLabel="Sending magic link...">
+                Send magic link
+              </PendingButton>
             </form>
           </Card>
         ) : (
@@ -118,7 +121,7 @@ export default async function AdminPage({
             </Card>
 
             <CmsSection title="Profile">
-              <form action={upsertProfile} className="grid gap-4">
+              <AdminActionForm action={upsertProfile} className="grid gap-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminField label="Full name" name="full_name" defaultValue={cms?.profile?.full_name} required />
                   <AdminField label="Role" name="role" defaultValue={cms?.profile?.role} required />
@@ -135,12 +138,12 @@ export default async function AdminPage({
                   <AdminField label="Resume URL" name="resume_url" defaultValue={cms?.profile?.resume_url} />
                   <AdminField label="Avatar URL" name="avatar_url" defaultValue={cms?.profile?.avatar_url} />
                 </div>
-                <Button>Save profile</Button>
-              </form>
+                <PendingButton pendingLabel="Saving profile...">Save profile</PendingButton>
+              </AdminActionForm>
             </CmsSection>
 
             <CmsSection title="Projects">
-              <form action={upsertProject} className="grid gap-4">
+              <AdminActionForm action={upsertProject} className="grid gap-4" resetOnSuccess>
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminField label="Title" name="title" required />
                   <AdminField label="Slug" name="slug" required />
@@ -175,26 +178,28 @@ export default async function AdminPage({
                   </label>
                   <Checkbox name="featured" label="Featured on homepage" />
                 </div>
-                <Button>
+                <PendingButton pendingLabel="Saving project...">
                   <Plus className="h-4 w-4" />
                   Save project
-                </Button>
-              </form>
+                </PendingButton>
+              </AdminActionForm>
               <AdminList items={cms?.projects} table="projects" labelKey="title" />
             </CmsSection>
 
             <CmsSection title="Project media">
-              <form action={createProjectMedia} className="grid gap-4 md:grid-cols-3">
+              <AdminActionForm action={createProjectMedia} className="grid gap-4 md:grid-cols-3" resetOnSuccess>
                 <AdminField label="Project slug" name="project_slug" required />
                 <AdminField label="Image URL" name="url" required />
                 <AdminField label="Alt text" name="alt" required />
-                <Button className="md:col-span-3">Add media URL</Button>
-              </form>
+                <PendingButton className="md:col-span-3" pendingLabel="Adding media...">
+                  Add media URL
+                </PendingButton>
+              </AdminActionForm>
               <AdminList items={cms?.projectMedia} table="project_media" labelKey="alt" />
             </CmsSection>
 
             <CmsSection title="Timeline">
-              <form action={createTimelineItem} className="grid gap-4">
+              <AdminActionForm action={createTimelineItem} className="grid gap-4" resetOnSuccess>
                 <div className="grid gap-4 md:grid-cols-3">
                   <label className="grid gap-2 text-sm font-semibold">
                     Kind
@@ -215,31 +220,35 @@ export default async function AdminPage({
                   <textarea name="description" rows={4} required className="admin-input rounded-[1.25rem] py-3" />
                 </label>
                 <Checkbox name="published" label="Published" defaultChecked />
-                <Button>Add timeline item</Button>
-              </form>
+                <PendingButton pendingLabel="Adding timeline item...">
+                  Add timeline item
+                </PendingButton>
+              </AdminActionForm>
               <AdminList items={cms?.timeline} table="timeline_items" labelKey="title" />
             </CmsSection>
 
             <div className="grid gap-6 lg:grid-cols-2">
               <CmsSection title="Skills">
-                <form action={createSkill} className="grid gap-4">
+                <AdminActionForm action={createSkill} className="grid gap-4" resetOnSuccess>
                   <AdminField label="Group" name="group_name" required />
                   <AdminField label="Skills, comma-separated" name="labels" required />
-                  <Button>Add skills</Button>
-                </form>
+                  <PendingButton pendingLabel="Adding skills...">Add skills</PendingButton>
+                </AdminActionForm>
                 <AdminList items={cms?.skills} table="skills" labelKey="label" />
               </CmsSection>
 
               <CmsSection title="Certificates">
-                <form action={createCertificate} className="grid gap-4">
+                <AdminActionForm action={createCertificate} className="grid gap-4" resetOnSuccess>
                   <AdminField label="Title" name="title" required />
                   <AdminField label="Issuer" name="issuer" />
                   <AdminField label="Year" name="year_label" />
                   <AdminField label="Image URL" name="image_url" />
                   <AdminField label="Alt text" name="alt" />
                   <Checkbox name="published" label="Published" defaultChecked />
-                  <Button>Add certificate</Button>
-                </form>
+                  <PendingButton pendingLabel="Adding certificate...">
+                    Add certificate
+                  </PendingButton>
+                </AdminActionForm>
                 <AdminList items={cms?.certificates} table="certificates" labelKey="title" />
               </CmsSection>
             </div>
@@ -341,14 +350,14 @@ function AdminList({
             {item.slug && <p className="text-sm text-[rgb(var(--muted))]">/{item.slug}</p>}
             {item.group_name && <p className="text-sm text-[rgb(var(--muted))]">{item.group_name}</p>}
           </div>
-          <form action={deleteCmsRecord}>
+          <AdminActionForm action={deleteCmsRecord}>
             <input type="hidden" name="table" value={table} />
             <input type="hidden" name="id" value={item.id} />
-            <Button variant="secondary">
+            <PendingButton pendingLabel="Deleting..." variant="secondary">
               <Trash2 className="h-4 w-4" />
               Delete
-            </Button>
-          </form>
+            </PendingButton>
+          </AdminActionForm>
         </div>
       ))}
     </div>

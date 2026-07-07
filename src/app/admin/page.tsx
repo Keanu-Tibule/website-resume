@@ -7,16 +7,17 @@ import {
   createSkill,
   createTimelineItem,
   deleteCmsRecord,
-  signIn,
+  requestAdminOtp,
   signOut,
   updateCertificate,
   updateProjectMedia,
   updateSkill,
   updateTimelineItem,
+  verifyAdminOtp,
   upsertProfile,
   upsertProject,
 } from "@/app/admin/actions";
-import { AdminActionForm, PendingButton } from "@/app/admin/form-controls";
+import { AdminActionForm, AdminOtpLogin, PendingButton } from "@/app/admin/form-controls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -68,7 +69,7 @@ export default async function AdminPage({
           </div>
         </div>
 
-        {params.sent && <Notice>Magic link sent. Check your inbox.</Notice>}
+        {params.sent && <Notice>Email code sent. Check your inbox.</Notice>}
         {params.updated && <Notice>Saved {String(params.updated)}.</Notice>}
         {params.deleted && <Notice>Deleted record.</Notice>}
         {params.error === "not-allowed" && (
@@ -76,17 +77,17 @@ export default async function AdminPage({
         )}
         {params.error === "rate-limit" && (
           <Notice tone="danger">
-            Too many magic links were requested. Wait a minute or two, then try again.
+            Too many login codes were requested. Wait a minute or two, then try again.
           </Notice>
         )}
         {params.error === "magic-link" && (
           <Notice tone="danger">
-            Supabase could not send the magic link. Check Auth settings and try again.
+            Supabase could not send the login code. Check Auth settings and try again.
           </Notice>
         )}
         {params.error === "auth-callback" && (
           <Notice tone="danger">
-            The login link could not be verified. Request a fresh magic link.
+            The login link could not be verified. Request a fresh code.
           </Notice>
         )}
 
@@ -107,14 +108,14 @@ export default async function AdminPage({
             <Lock className="mb-6 h-8 w-8 text-[rgb(var(--accent))]" />
             <h2 className="font-display text-3xl font-black">Admin login</h2>
             <p className="mt-3 text-[rgb(var(--muted))]">
-              Sign in with the allowlisted owner email configured in Supabase.
+              Request a one-time code with the allowlisted owner email, then enter it here.
+              Your admin session stays active after verification.
             </p>
-            <form action={signIn} className="mt-8 grid gap-4">
-              <AdminField label="Email" name="email" type="email" required />
-              <PendingButton disabled={!supabase} pendingLabel="Sending magic link...">
-                Send magic link
-              </PendingButton>
-            </form>
+            <AdminOtpLogin
+              disabled={!supabase}
+              requestAction={requestAdminOtp}
+              verifyAction={verifyAdminOtp}
+            />
           </Card>
         ) : (
           <div className="grid gap-6">
@@ -241,7 +242,6 @@ export default async function AdminPage({
                   <AdminField label="Skills, comma-separated" name="labels" required />
                   <PendingButton pendingLabel="Adding skills...">Add skills</PendingButton>
                 </AdminActionForm>
-                <AdminList items={cms?.skills} table="skills" labelKey="label" />
                 <SkillEditors items={cms?.skills ?? []} />
               </CmsSection>
 
@@ -435,24 +435,67 @@ function TimelineEditors({ items }: { items: AdminRow[] }) {
 
 function SkillEditors({ items }: { items: AdminRow[] }) {
   if (items.length === 0) {
-    return null;
+    return <p className="text-sm text-[rgb(var(--muted))]">No skills yet.</p>;
   }
+
+  const groupedSkills = items.reduce<Map<string, AdminRow[]>>((groups, item) => {
+    const groupName = asText(item.group_name) || "Ungrouped";
+    const groupItems = groups.get(groupName) ?? [];
+    groups.set(groupName, [...groupItems, item]);
+    return groups;
+  }, new Map());
 
   return (
     <div className="grid gap-3">
-      <h3 className="text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
-        Edit existing skills
+      <h3 className="flex flex-wrap items-center justify-between gap-2 text-sm font-black uppercase tracking-[0.24em] text-[rgb(var(--muted))]">
+        <span>Manage existing skills</span>
+        <span className="rounded-full border border-[rgb(var(--line))] px-3 py-1 text-[0.65rem] tracking-[0.18em]">
+          {items.length} total
+        </span>
       </h3>
-      {items.map((item) => (
-        <details key={item.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
-          <summary className="cursor-pointer font-bold">{asText(item.label) || "Untitled skill"}</summary>
-          <AdminActionForm action={updateSkill} className="mt-5 grid gap-4">
-            <input type="hidden" name="id" value={item.id} />
-            <AdminField label="Group" name="group_name" defaultValue={asText(item.group_name)} required />
-            <AdminField label="Skill" name="label" defaultValue={asText(item.label)} required />
-            <Checkbox name="published" label="Published" defaultChecked={item.published === true} />
-            <PendingButton pendingLabel="Saving skill...">Save skill edits</PendingButton>
-          </AdminActionForm>
+      {Array.from(groupedSkills.entries()).map(([groupName, groupItems]) => (
+        <details
+          key={groupName}
+          className="rounded-2xl border border-[rgb(var(--line))] bg-white/35 p-4"
+        >
+          <summary className="cursor-pointer list-none">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-display text-xl font-black">{groupName}</p>
+              <span className="rounded-full bg-[rgb(var(--soft))] px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-[rgb(var(--muted))]">
+                {groupItems.length} {groupItems.length === 1 ? "skill" : "skills"}
+              </span>
+            </div>
+          </summary>
+          <div className="mt-4 grid gap-3">
+            {groupItems.map((item) => (
+              <div
+                key={item.id}
+                className="grid gap-3 rounded-2xl border border-[rgb(var(--line))] bg-white/55 p-3"
+              >
+                <AdminActionForm action={updateSkill} className="grid gap-3">
+                  <input type="hidden" name="id" value={item.id} />
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <AdminField label="Group" name="group_name" defaultValue={asText(item.group_name)} required />
+                    <AdminField label="Skill" name="label" defaultValue={asText(item.label)} required />
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Checkbox name="published" label="Published" defaultChecked={item.published === true} />
+                    <PendingButton className="sm:min-w-40" pendingLabel="Saving skill...">
+                      Save skill
+                    </PendingButton>
+                  </div>
+                </AdminActionForm>
+                <AdminActionForm action={deleteCmsRecord}>
+                  <input type="hidden" name="table" value="skills" />
+                  <input type="hidden" name="id" value={item.id} />
+                  <PendingButton pendingLabel="Deleting..." variant="secondary">
+                    <Trash2 className="h-4 w-4" />
+                    Delete skill
+                  </PendingButton>
+                </AdminActionForm>
+              </div>
+            ))}
+          </div>
         </details>
       ))}
     </div>

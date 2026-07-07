@@ -96,6 +96,84 @@ export async function signIn(formData: FormData) {
   redirect("/admin?sent=1");
 }
 
+function getAdminAllowlist() {
+  return process.env.ADMIN_EMAILS?.split(",").map((item) => item.trim().toLowerCase());
+}
+
+function assertAdminEmail(email: string) {
+  const allowlist = getAdminAllowlist();
+
+  if (allowlist?.length && !allowlist.includes(email.toLowerCase())) {
+    throw new Error("That email is not in ADMIN_EMAILS.");
+  }
+}
+
+export async function requestAdminOtp(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const email = String(formData.get("email") ?? "").trim();
+
+    if (!email || !email.includes("@")) {
+      throw new Error("Enter a valid admin email.");
+    }
+
+    assertAdminEmail(email);
+
+    const supabase = await requireSupabase();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+      },
+    });
+
+    if (error) {
+      if (error.message.toLowerCase().includes("rate limit")) {
+        throw new Error("Too many codes were requested. Wait a minute or two, then try again.");
+      }
+
+      throw new Error(error.message);
+    }
+
+    return success("Code sent. Check your email and enter it below.");
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function verifyAdminOtp(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    const email = String(formData.get("email") ?? "").trim();
+    const token = String(formData.get("token") ?? "").trim().replace(/\s+/g, "");
+
+    if (!email || !token) {
+      throw new Error("Email and code are required.");
+    }
+
+    assertAdminEmail(email);
+
+    const supabase = await requireSupabase();
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    return failure(error);
+  }
+
+  redirect("/admin");
+}
+
 export async function signOut() {
   const supabase = await requireSupabase();
   await supabase.auth.signOut();

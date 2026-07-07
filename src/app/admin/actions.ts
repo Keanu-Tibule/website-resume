@@ -125,6 +125,7 @@ export async function requestAdminOtp(
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
+        emailRedirectTo: `${await getBaseUrl()}/auth/callback?next=/admin`,
         shouldCreateUser: true,
       },
     });

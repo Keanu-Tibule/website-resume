@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 function getSupabaseEnv() {
@@ -10,6 +11,17 @@ function getSupabaseEnv() {
   }
 
   return { url, anonKey };
+}
+
+function getSupabaseAdminEnv() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    return null;
+  }
+
+  return { url, serviceRoleKey };
 }
 
 export async function getSupabaseServerClient() {
@@ -35,6 +47,21 @@ export async function getSupabaseServerClient() {
           // Server Components cannot always set cookies. Server Actions can.
         }
       },
+    },
+  });
+}
+
+export function getSupabaseAdminClient() {
+  const env = getSupabaseAdminEnv();
+
+  if (!env) {
+    return null;
+  }
+
+  return createClient(env.url, env.serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
     },
   });
 }

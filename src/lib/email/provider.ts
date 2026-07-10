@@ -7,12 +7,21 @@ type ContactEmailPayload = {
   message: string;
 };
 
+function getResendClient() {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+
+  return new Resend(process.env.RESEND_API_KEY);
+}
+
 export async function sendContactNotification(payload: ContactEmailPayload) {
-  if (!process.env.RESEND_API_KEY || !process.env.CONTACT_TO_EMAIL) {
+  const resend = getResendClient();
+
+  if (!resend || !process.env.CONTACT_TO_EMAIL) {
     return { status: "skipped" as const };
   }
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
   const from = process.env.CONTACT_FROM_EMAIL ?? "Portfolio <onboarding@resend.dev>";
 
   const { error } = await resend.emails.send({
@@ -35,4 +44,37 @@ export async function sendContactNotification(payload: ContactEmailPayload) {
   }
 
   return { status: "sent" as const };
+}
+
+export async function sendAdminOtpEmail({
+  email,
+  code,
+}: {
+  email: string;
+  code: string;
+}) {
+  const resend = getResendClient();
+
+  if (!resend) {
+    throw new Error("RESEND_API_KEY is not configured.");
+  }
+
+  const from = process.env.ADMIN_OTP_FROM_EMAIL ?? "Keanu Portfolio <onboarding@resend.dev>";
+
+  const { error } = await resend.emails.send({
+    from,
+    to: email,
+    subject: `${code} is your portfolio admin code`,
+    text: [
+      "Use this one-time code to sign in to your portfolio admin:",
+      "",
+      code,
+      "",
+      "This code expires in 10 minutes.",
+    ].join("\n"),
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }

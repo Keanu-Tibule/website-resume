@@ -20,7 +20,8 @@ import {
 import { AdminActionForm, AdminOtpLogin, PendingButton } from "@/app/admin/form-controls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getAdminSession } from "@/lib/admin-auth";
+import { getSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Admin",
@@ -32,12 +33,10 @@ export default async function AdminPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const supabase = await getSupabaseServerClient();
-  const { data } = supabase
-    ? await supabase.auth.getUser()
-    : { data: { user: null } };
-  const user = data.user;
-  const cms = user && supabase ? await loadCmsData(supabase) : null;
+  const session = await getAdminSession();
+  const supabase = getSupabaseAdminClient();
+  const adminReady = Boolean(supabase && process.env.RESEND_API_KEY && process.env.ADMIN_EMAILS);
+  const cms = session && supabase ? await loadCmsData(supabase) : null;
 
   return (
     <main className="min-h-screen px-4 py-10">
@@ -58,7 +57,7 @@ export default async function AdminPage({
                 View portfolio
               </Link>
             </Button>
-            {user && (
+            {session && (
               <form action={signOut}>
                 <PendingButton pendingLabel="Signing out..." variant="secondary">
                   <LogOut className="h-4 w-4" />
@@ -91,19 +90,19 @@ export default async function AdminPage({
           </Notice>
         )}
 
-        {!supabase && (
+        {!adminReady && (
           <Card className="mb-6 border-amber-300/70">
             <h2 className="font-display text-2xl font-black">
-              Supabase env vars are not configured
+              Admin env vars are not configured
             </h2>
             <p className="mt-3 text-[rgb(var(--muted))]">
-              Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
-              locally and in Vercel to enable login and CMS writes.
+              Add NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_EMAILS,
+              and RESEND_API_KEY in Vercel to enable custom OTP login and CMS writes.
             </p>
           </Card>
         )}
 
-        {!user ? (
+        {!session ? (
           <Card className="max-w-xl">
             <Lock className="mb-6 h-8 w-8 text-[rgb(var(--accent))]" />
             <h2 className="font-display text-3xl font-black">Admin login</h2>
@@ -112,7 +111,7 @@ export default async function AdminPage({
               Your admin session stays active after verification.
             </p>
             <AdminOtpLogin
-              disabled={!supabase}
+              disabled={!adminReady}
               requestAction={requestAdminOtp}
               verifyAction={verifyAdminOtp}
             />
@@ -122,7 +121,7 @@ export default async function AdminPage({
             <Card>
               <ShieldCheck className="mb-6 h-8 w-8 text-[rgb(var(--accent))]" />
               <h2 className="font-display text-3xl font-black">Signed in</h2>
-              <p className="mt-3 break-all text-[rgb(var(--muted))]">{user.email}</p>
+              <p className="mt-3 break-all text-[rgb(var(--muted))]">{session.email}</p>
             </Card>
 
             <CmsSection title="Profile">
@@ -285,7 +284,7 @@ export default async function AdminPage({
   );
 }
 
-async function loadCmsData(supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServerClient>>>) {
+async function loadCmsData(supabase: NonNullable<ReturnType<typeof getSupabaseAdminClient>>) {
   const [profile, projects, projectMedia, timeline, skills, certificates, messages] = await Promise.all([
     supabase.from("profile").select("*").maybeSingle(),
     supabase

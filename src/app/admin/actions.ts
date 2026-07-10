@@ -4,7 +4,15 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  clearAdminAuthCookies,
+  createOtpCode,
+  requireAdminSession,
+  setAdminOtpChallenge,
+  verifyAdminOtpChallenge,
+} from "@/lib/admin-auth";
+import { sendAdminOtpEmail } from "@/lib/email/provider";
+import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AdminActionState = {
   ok: boolean;
@@ -48,6 +56,18 @@ async function requireSupabase() {
 
   if (!supabase) {
     throw new Error("Supabase is not configured.");
+  }
+
+  return supabase;
+}
+
+async function requireAdminSupabase() {
+  await requireAdminSession();
+
+  const supabase = getSupabaseAdminClient();
+
+  if (!supabase) {
+    throw new Error("Supabase service role is not configured.");
   }
 
   return supabase;
@@ -121,22 +141,10 @@ export async function requestAdminOtp(
 
     assertAdminEmail(email);
 
-    const supabase = await requireSupabase();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${await getBaseUrl()}/auth/callback?next=/admin`,
-        shouldCreateUser: true,
-      },
-    });
+    const code = createOtpCode();
 
-    if (error) {
-      if (error.message.toLowerCase().includes("rate limit")) {
-        throw new Error("Too many codes were requested. Wait a minute or two, then try again.");
-      }
-
-      throw new Error(error.message);
-    }
+    await setAdminOtpChallenge(email, code);
+    await sendAdminOtpEmail({ email, code });
 
     return success("Code sent. Check your email and enter it below.");
   } catch (error) {
@@ -158,15 +166,10 @@ export async function verifyAdminOtp(
 
     assertAdminEmail(email);
 
-    const supabase = await requireSupabase();
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    });
+    const result = await verifyAdminOtpChallenge(email, token);
 
-    if (error) {
-      throw new Error(error.message);
+    if (!result.ok) {
+      throw new Error(result.message);
     }
   } catch (error) {
     return failure(error);
@@ -176,8 +179,7 @@ export async function verifyAdminOtp(
 }
 
 export async function signOut() {
-  const supabase = await requireSupabase();
-  await supabase.auth.signOut();
+  await clearAdminAuthCookies();
   redirect("/admin");
 }
 
@@ -186,7 +188,7 @@ export async function upsertProject(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const id = String(formData.get("id") ?? "").trim();
     const oldSlug = String(formData.get("old_slug") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
@@ -239,7 +241,7 @@ export async function upsertProfile(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const fullName = String(formData.get("full_name") ?? "").trim();
     const role = String(formData.get("role") ?? "").trim();
 
@@ -277,7 +279,7 @@ export async function createTimelineItem(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const title = String(formData.get("title") ?? "").trim();
     const organization = String(formData.get("organization") ?? "").trim();
     const dateLabel = String(formData.get("date_label") ?? "").trim();
@@ -315,7 +317,7 @@ export async function updateTimelineItem(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const id = String(formData.get("id") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
     const organization = String(formData.get("organization") ?? "").trim();
@@ -357,7 +359,7 @@ export async function createSkill(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const groupName = String(formData.get("group_name") ?? "").trim();
     const labels = listFromText(formData.get("labels"), ",");
 
@@ -386,7 +388,7 @@ export async function updateSkill(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const id = String(formData.get("id") ?? "").trim();
     const groupName = String(formData.get("group_name") ?? "").trim();
     const label = String(formData.get("label") ?? "").trim();
@@ -421,7 +423,7 @@ export async function createCertificate(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const title = String(formData.get("title") ?? "").trim();
 
     if (!title) {
@@ -454,7 +456,7 @@ export async function updateCertificate(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const id = String(formData.get("id") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
 
@@ -491,7 +493,7 @@ export async function createProjectMedia(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const slug = cleanSlug(formData.get("project_slug"));
     const url = String(formData.get("url") ?? "").trim();
     const alt = String(formData.get("alt") ?? "").trim();
@@ -534,7 +536,7 @@ export async function updateProjectMedia(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const id = String(formData.get("id") ?? "").trim();
     const url = String(formData.get("url") ?? "").trim();
     const alt = String(formData.get("alt") ?? "").trim();
@@ -565,7 +567,7 @@ export async function deleteCmsRecord(
   formData: FormData,
 ): Promise<AdminActionState> {
   try {
-    const supabase = await requireSupabase();
+    const supabase = await requireAdminSupabase();
     const table = String(formData.get("table") ?? "");
     const id = String(formData.get("id") ?? "");
 

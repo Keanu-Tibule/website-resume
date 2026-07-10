@@ -95,8 +95,8 @@ export function AdminOtpLogin({
         <p
           className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
             requestState.ok
-              ? "border-emerald-300 text-emerald-700"
-              : "border-red-300 text-red-700"
+              ? "border-emerald-400/45 bg-emerald-400/10 text-emerald-100"
+              : "border-red-400/45 bg-red-400/10 text-red-100"
           }`}
           role="status"
         >
@@ -122,7 +122,7 @@ export function AdminOtpLogin({
             Verify and open admin
           </PendingButton>
           {verifyState.nonce ? (
-            <p className="text-sm font-semibold text-red-700" role="alert">
+            <p className="text-sm font-semibold text-red-100" role="alert">
               {verifyState.message}
             </p>
           ) : null}
@@ -160,8 +160,8 @@ function AdminToast({ state }: { state: AdminActionState }) {
     <div
       className={`fixed bottom-5 right-5 z-50 max-w-sm rounded-2xl border px-4 py-3 text-sm font-semibold shadow-soft backdrop-blur-xl ${
         state.ok
-          ? "border-emerald-300 bg-emerald-50/95 text-emerald-800"
-          : "border-red-300 bg-red-50/95 text-red-800"
+          ? "border-emerald-400/45 bg-slate-950/95 text-emerald-100"
+          : "border-red-400/45 bg-slate-950/95 text-red-100"
       }`}
       role="status"
     >

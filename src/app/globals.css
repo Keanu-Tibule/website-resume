@@ -56,9 +56,32 @@ body {
     backdrop-filter: blur(24px);
   }
 
+  .admin-shell {
+    color-scheme: dark;
+    --surface: 5 8 15;
+    --surface-strong: 14 19 31;
+    --text: 241 245 249;
+    --muted: 148 163 184;
+    --line: 51 65 85;
+    --accent: 56 189 248;
+    --accent-2: 129 140 248;
+    --accent-3: 190 242 100;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 8% 0%, rgb(var(--accent) / 0.14), transparent 30rem),
+      radial-gradient(circle at 92% 14%, rgb(var(--accent-2) / 0.16), transparent 26rem),
+      linear-gradient(135deg, #050815 0%, #0b1020 46%, #111827 100%);
+  }
+
+  .admin-shell .glass-panel {
+    background: rgb(var(--surface-strong) / 0.84);
+    border-color: rgb(var(--line) / 0.72);
+    box-shadow: 0 24px 80px -52px rgb(0 0 0 / 0.82);
+  }
+
   .admin-input {
     min-height: 3rem;
-    border-radius: 9999px;
+    border-radius: 0.75rem;
     border: 1px solid rgb(var(--line));
     background: rgb(var(--surface-strong) / 0.82);
     padding-inline: 1rem;
@@ -70,6 +93,18 @@ body {
   .admin-input:focus {
     border-color: rgb(var(--accent));
     box-shadow: 0 0 0 3px rgb(var(--accent) / 0.14);
+  }
+
+  .admin-input::file-selector-button {
+    margin: 0.45rem 0.75rem 0.45rem 0;
+    border: 0;
+    border-radius: 0.625rem;
+    background: rgb(var(--accent) / 0.14);
+    color: rgb(var(--accent));
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    padding: 0.55rem 0.85rem;
   }
 
   .section-pad {

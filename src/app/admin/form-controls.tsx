@@ -49,7 +49,7 @@ export function AdminActionForm({
 
   return (
     <>
-      <form ref={formRef} action={formAction} className={className}>
+      <form ref={formRef} action={formAction} className={className} encType="multipart/form-data">
         {children}
       </form>
       {showToast && <AdminToast state={state} />}

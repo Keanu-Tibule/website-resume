@@ -8,6 +8,7 @@ import {
   createTimelineItem,
   deleteCmsRecord,
   requestAdminOtp,
+  softDeleteContactMessage,
   signOut,
   updateCertificate,
   updateProjectMedia,
@@ -39,7 +40,7 @@ export default async function AdminPage({
   const cms = session && supabase ? await loadCmsData(supabase) : null;
 
   return (
-    <main className="min-h-screen px-4 py-10">
+    <main className="admin-shell min-h-screen px-4 py-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
@@ -133,14 +134,20 @@ export default async function AdminPage({
                 <AdminField label="Headline" name="headline" defaultValue={cms?.profile?.headline} />
                 <label className="grid gap-2 text-sm font-semibold">
                   Bio
-                  <textarea name="bio" rows={4} defaultValue={cms?.profile?.bio ?? ""} className="admin-input rounded-[1.25rem] py-3" />
+                  <textarea name="bio" rows={4} defaultValue={cms?.profile?.bio ?? ""} className="admin-input py-3" />
                 </label>
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminField label="Location" name="location_label" defaultValue={cms?.profile?.location_label} />
                   <AdminField label="Email" name="email" type="email" defaultValue={cms?.profile?.email} />
                   <AdminField label="Phone" name="phone" defaultValue={cms?.profile?.phone} />
-                  <AdminField label="Resume URL" name="resume_url" defaultValue={cms?.profile?.resume_url} />
-                  <AdminField label="Avatar URL" name="avatar_url" defaultValue={cms?.profile?.avatar_url} />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FileField label="Upload avatar" name="avatar_file" accept="image/*" currentUrl={cms?.profile?.avatar_url} />
+                  <FileField label="Upload resume PDF" name="resume_file" accept="application/pdf" currentUrl={cms?.profile?.resume_url} />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <AdminField label="Avatar URL fallback" name="avatar_url" defaultValue={cms?.profile?.avatar_url} />
+                  <AdminField label="Resume URL fallback" name="resume_url" defaultValue={cms?.profile?.resume_url} />
                 </div>
                 <PendingButton pendingLabel="Saving profile...">Save profile</PendingButton>
               </AdminActionForm>
@@ -161,15 +168,15 @@ export default async function AdminPage({
                 </div>
                 <label className="grid gap-2 text-sm font-semibold">
                   Description
-                  <textarea name="description" rows={5} className="admin-input rounded-[1.25rem] py-3" />
+                  <textarea name="description" rows={5} className="admin-input py-3" />
                 </label>
                 <label className="grid gap-2 text-sm font-semibold">
                   Outcomes, one per line
-                  <textarea name="outcomes" rows={4} className="admin-input rounded-[1.25rem] py-3" />
+                  <textarea name="outcomes" rows={4} className="admin-input py-3" />
                 </label>
                 <label className="grid gap-2 text-sm font-semibold">
                   Confidentiality note
-                  <textarea name="confidentiality_note" rows={3} className="admin-input rounded-[1.25rem] py-3" />
+                  <textarea name="confidentiality_note" rows={3} className="admin-input py-3" />
                 </label>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-semibold">
@@ -194,10 +201,11 @@ export default async function AdminPage({
             <CmsSection title="Project media">
               <AdminActionForm action={createProjectMedia} className="grid gap-4 md:grid-cols-3" resetOnSuccess>
                 <AdminField label="Project slug" name="project_slug" required />
-                <AdminField label="Image URL" name="url" required />
+                <FileField label="Upload image" name="media_file" accept="image/*" />
+                <AdminField label="Image URL fallback" name="url" />
                 <AdminField label="Alt text" name="alt" required />
                 <PendingButton className="md:col-span-3" pendingLabel="Adding media...">
-                  Add media URL
+                  Add media
                 </PendingButton>
               </AdminActionForm>
               <AdminList items={cms?.projectMedia} table="project_media" labelKey="alt" />
@@ -223,7 +231,7 @@ export default async function AdminPage({
                 </div>
                 <label className="grid gap-2 text-sm font-semibold">
                   Description
-                  <textarea name="description" rows={4} required className="admin-input rounded-[1.25rem] py-3" />
+                  <textarea name="description" rows={4} required className="admin-input py-3" />
                 </label>
                 <Checkbox name="published" label="Published" defaultChecked />
                 <PendingButton pendingLabel="Adding timeline item...">
@@ -249,7 +257,8 @@ export default async function AdminPage({
                   <AdminField label="Title" name="title" required />
                   <AdminField label="Issuer" name="issuer" />
                   <AdminField label="Year" name="year_label" />
-                  <AdminField label="Image URL" name="image_url" />
+                  <FileField label="Upload certificate image" name="image_file" accept="image/*" />
+                  <AdminField label="Image URL fallback" name="image_url" />
                   <AdminField label="Alt text" name="alt" />
                   <Checkbox name="published" label="Published" defaultChecked />
                   <PendingButton pendingLabel="Adding certificate...">
@@ -268,10 +277,21 @@ export default async function AdminPage({
                 )}
                 {(cms?.messages ?? []).map((message) => (
                   <div key={message.id} className="rounded-2xl border border-[rgb(var(--line))] p-4">
-                    <p className="font-bold">{message.subject}</p>
-                    <p className="mt-1 text-sm text-[rgb(var(--muted))]">
-                      {message.name} - {message.email}
-                    </p>
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                      <div>
+                        <p className="font-bold">{message.subject}</p>
+                        <p className="mt-1 text-sm text-[rgb(var(--muted))]">
+                          {message.name} - {message.email}
+                        </p>
+                      </div>
+                      <AdminActionForm action={softDeleteContactMessage}>
+                        <input type="hidden" name="id" value={message.id} />
+                        <PendingButton pendingLabel="Deleting..." variant="secondary">
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </PendingButton>
+                      </AdminActionForm>
+                    </div>
                     <p className="mt-3 text-sm">{message.message}</p>
                   </div>
                 ))}
@@ -307,7 +327,12 @@ async function loadCmsData(supabase: NonNullable<ReturnType<typeof getSupabaseAd
       .from("certificates")
       .select("id,title,issuer,year_label,image_url,alt,published")
       .order("created_at", { ascending: false }),
-    supabase.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(10),
+    supabase
+      .from("contact_messages")
+      .select("*")
+      .neq("status", "deleted")
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
 
   return {
@@ -389,7 +414,8 @@ function ProjectMediaEditors({ items }: { items: AdminRow[] }) {
           <summary className="cursor-pointer font-bold">{asText(item.alt) || "Untitled media"}</summary>
           <AdminActionForm action={updateProjectMedia} className="mt-5 grid gap-4">
             <input type="hidden" name="id" value={item.id} />
-            <AdminField label="Image URL" name="url" defaultValue={asText(item.url)} required />
+            <FileField label="Upload replacement image" name="media_file" accept="image/*" currentUrl={asText(item.url)} />
+            <AdminField label="Image URL fallback" name="url" defaultValue={asText(item.url)} />
             <AdminField label="Alt text" name="alt" defaultValue={asText(item.alt)} required />
             <PendingButton pendingLabel="Saving media...">Save media edits</PendingButton>
           </AdminActionForm>
@@ -455,7 +481,7 @@ function SkillEditors({ items }: { items: AdminRow[] }) {
       {Array.from(groupedSkills.entries()).map(([groupName, groupItems]) => (
         <details
           key={groupName}
-          className="rounded-2xl border border-[rgb(var(--line))] bg-white/35 p-4"
+          className="rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface-strong)/0.45)] p-4"
         >
           <summary className="cursor-pointer list-none">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -469,7 +495,7 @@ function SkillEditors({ items }: { items: AdminRow[] }) {
             {groupItems.map((item) => (
               <div
                 key={item.id}
-                className="grid gap-3 rounded-2xl border border-[rgb(var(--line))] bg-white/55 p-3"
+                className="grid gap-3 rounded-2xl border border-[rgb(var(--line))] bg-[rgb(var(--surface)/0.55)] p-3"
               >
                 <AdminActionForm action={updateSkill} className="grid gap-3">
                   <input type="hidden" name="id" value={item.id} />
@@ -519,7 +545,8 @@ function CertificateEditors({ items }: { items: AdminRow[] }) {
             <AdminField label="Title" name="title" defaultValue={asText(item.title)} required />
             <AdminField label="Issuer" name="issuer" defaultValue={asText(item.issuer)} />
             <AdminField label="Year" name="year_label" defaultValue={asText(item.year_label)} />
-            <AdminField label="Image URL" name="image_url" defaultValue={asText(item.image_url)} />
+            <FileField label="Upload replacement image" name="image_file" accept="image/*" currentUrl={asText(item.image_url)} />
+            <AdminField label="Image URL fallback" name="image_url" defaultValue={asText(item.image_url)} />
             <AdminField label="Alt text" name="alt" defaultValue={asText(item.alt)} />
             <Checkbox name="published" label="Published" defaultChecked={item.published === true} />
             <PendingButton pendingLabel="Saving certificate...">Save certificate edits</PendingButton>
@@ -660,8 +687,36 @@ function TextareaField({
         rows={rows}
         required={required}
         defaultValue={defaultValue ?? ""}
-        className="admin-input rounded-[1.25rem] py-3"
+        className="admin-input py-3"
       />
+    </label>
+  );
+}
+
+function FileField({
+  label,
+  name,
+  accept,
+  currentUrl,
+}: {
+  label: string;
+  name: string;
+  accept: string;
+  currentUrl?: string | null;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold">
+      {label}
+      <input name={name} type="file" accept={accept} className="admin-input py-3" />
+      {currentUrl ? (
+        <Link
+          href={currentUrl}
+          target="_blank"
+          className="truncate text-xs font-semibold text-[rgb(var(--accent))]"
+        >
+          Current file
+        </Link>
+      ) : null}
     </label>
   );
 }
